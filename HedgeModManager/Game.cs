@@ -245,8 +245,11 @@ namespace HedgeModManager
             {
                 switch (Launcher)
                 {
-                    case GameLauncher.Steam:
-                        HedgeApp.StartURL($"steam://run/{BaseGame.AppID}", true);
+                    case GameLauncher.Custom:
+                        Process.Start(new ProcessStartInfo(Path.Combine(GameDirectory, BaseGame.ExecutableName))
+                        {
+                            WorkingDirectory = GameDirectory
+                        });
                         break;
                     case GameLauncher.Epic:
                         Process.Start(new ProcessStartInfo
@@ -327,7 +330,7 @@ namespace HedgeModManager
     public enum GameLauncher
     {
         None,
-        Steam,
+        Custom,
         Epic,
         Heroic
     }
