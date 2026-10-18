@@ -104,7 +104,7 @@ namespace HedgeModManager
                         var fullPath = Path.Combine(libraryPath, game.GamePath);
                         if (File.Exists(fullPath))
                         {
-                            games.Add(new GameInstall(game, Path.GetDirectoryName(fullPath), GameLauncher.Steam));
+                            games.Add(new GameInstall(game, Path.GetDirectoryName(fullPath), GameLauncher.Custom));
                         }
                     }
                 }
