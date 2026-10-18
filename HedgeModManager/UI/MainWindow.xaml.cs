@@ -1604,6 +1604,25 @@ namespace HedgeModManager
             HedgeApp.StartURL(HedgeApp.CurrentGameInstall.GameDirectory);
         }
 
+        private void UI_AddCustomGame_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new AddCustomGameWindow { Owner = this };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            if (!GameInstall.TryAddCustomGameInstall(dialog.DisplayName, dialog.GamePath, out var install, out var errorMessage))
+            {
+                HedgeApp.CreateOKMessageBox(Localise("CommonUIError"), errorMessage).ShowDialog();
+                return;
+            }
+
+            HedgeApp.GameInstalls.Add(install);
+            HedgeApp.SelectGameInstall(install);
+            RefreshProfiles();
+            Refresh();
+            UpdateStatus(LocaliseFormat("StatusUIGameChange", HedgeApp.CurrentGame));
+        }
+
         private void UI_ChangeDatabasePath_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new FolderBrowserDialog
