@@ -458,20 +458,23 @@
                 
                 <Grid Grid.Row="1" Background="{DynamicResource HMM.Window.DialogBottom}">
                     <Grid Margin="8,1,8,0" VerticalAlignment="Center" Height="56">
-                        <ComboBox x:Name="ComboBox_GameStatus" ItemsSource="{Binding Games}" Width="280" HorizontalAlignment="Left" Margin="0,8,5,8" SelectionChanged="Game_Changed">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Width="32" Height="32" CornerRadius="3" RenderOptions.BitmapScalingMode="Fant">
-                                            <Border.Background>
-                                                <ImageBrush ImageSource="{Binding GameImage}"/>
-                                            </Border.Background>
-                                        </Border>
-                                        <Label Content="{Binding GameName}" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <ComboBox x:Name="ComboBox_GameStatus" ItemsSource="{Binding Games}" Width="280" HorizontalAlignment="Left" Margin="0,8,5,8" SelectionChanged="Game_Changed">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Width="32" Height="32" CornerRadius="3" RenderOptions.BitmapScalingMode="Fant">
+                                                <Border.Background>
+                                                    <ImageBrush ImageSource="{Binding GameImage}"/>
+                                                </Border.Background>
+                                            </Border>
+                                            <Label Content="{Binding GameName}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button x:Name="Button_AddCustomGame" Content="+" Width="27" Height="27" Margin="0,8,0,8" Click="UI_AddCustomGame_Click" ToolTip="Add custom game"/>
+                        </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="SaveButton"     Content="{DynamicResource MainUISave}"        Width="130" Margin="5,8,5,8" Click="UI_Save_Click"/>

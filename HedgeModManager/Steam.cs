@@ -62,7 +62,7 @@ namespace HedgeModManager
             if (string.IsNullOrEmpty(SteamLocation))
                 return null;
 
-            string vdfLocation = Path.Combine(SteamLocation, "steamapps\\libraryfolders.vdf");
+            string vdfLocation = Path.Combine(SteamLocation, "steamapps", "libraryfolders.vdf");
             Dictionary<string, object> vdf = null;
             try
             {
@@ -82,26 +82,23 @@ namespace HedgeModManager
                     if (int.TryParse(library.Key, out int index))
                     {
                         if (library.Value is Dictionary<string, object> libraryInfo)
-                            paths.Add(Path.Combine(libraryInfo["path"] as string ?? string.Empty, "steamapps\\common"));
+                            paths.Add(Path.Combine(libraryInfo["path"] as string ?? string.Empty, "steamapps", "common"));
                         else
-                            paths.Add(Path.Combine(library.Value as string ?? string.Empty, "steamapps\\common"));
+                            paths.Add(Path.Combine(library.Value as string ?? string.Empty, "steamapps", "common"));
                     }
                 }
             }
 
             foreach (string path in paths)
             {
-                string libraryPath = path;
-
-                // Prepend "Z:" if the path starts with "/" on WINE
-                if (HedgeApp.IsLinux && libraryPath.StartsWith("/"))
-                    libraryPath = $"Z:{libraryPath}";
-
-                if (Directory.Exists(path))
+                foreach (string libraryPath in GetLibraryPathCandidates(path))
                 {
+                    if (!Directory.Exists(libraryPath))
+                        continue;
+
                     foreach (var game in Games.GetSupportedGames())
                     {
-                        var fullPath = Path.Combine(libraryPath, game.GamePath);
+                        var fullPath = Path.Combine(libraryPath, game.GamePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar));
                         if (File.Exists(fullPath))
                         {
                             games.Add(new GameInstall(game, Path.GetDirectoryName(fullPath), GameLauncher.Steam));
@@ -111,6 +108,18 @@ namespace HedgeModManager
             }
 
             return games;
+        }
+
+        private static IEnumerable<string> GetLibraryPathCandidates(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                yield break;
+
+            var normalized = path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+            yield return normalized;
+
+            if (HedgeApp.IsLinux && normalized.StartsWith("/"))
+                yield return $"Z:{normalized}";
         }
 
         public static bool CheckGame(string path)

@@ -559,15 +559,26 @@ namespace HedgeModManager
             if (gameinstall == null)
                 return;
 
-            foreach (var game in Games.GetSupportedGames())
+            if (gameinstall.BaseGame?.IsCustom == true)
             {
-                if (game == gameinstall.BaseGame)
+                CurrentGame = gameinstall.BaseGame;
+                CurrentGameInstall = gameinstall;
+                StartDirectory = gameinstall.GameDirectory;
+                RegistryConfig.LastGameDirectory = StartDirectory;
+                RegistryConfig.Save();
+            }
+            else
+            {
+                foreach (var game in Games.GetSupportedGames())
                 {
-                    CurrentGame = game;
-                    CurrentGameInstall = gameinstall;
-                    StartDirectory = gameinstall.GameDirectory;
-                    RegistryConfig.LastGameDirectory = StartDirectory;
-                    RegistryConfig.Save();
+                    if (game == gameinstall.BaseGame)
+                    {
+                        CurrentGame = game;
+                        CurrentGameInstall = gameinstall;
+                        StartDirectory = gameinstall.GameDirectory;
+                        RegistryConfig.LastGameDirectory = StartDirectory;
+                        RegistryConfig.Save();
+                    }
                 }
             }
             try

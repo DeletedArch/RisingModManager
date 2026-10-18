@@ -8,6 +8,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using static HedgeModManager.Lang;
 
 namespace HedgeModManager
@@ -202,6 +203,7 @@ namespace HedgeModManager
     public class Game
     {
         public string GameName = "NoGame";
+        public bool IsCustom = false;
         public string ExecutableName = string.Empty;
         public string SaveName = string.Empty;
         public ModLoader ModLoader = null;
@@ -225,15 +227,36 @@ namespace HedgeModManager
         public string GameDirectory;
         public GameLauncher Launcher;
         public bool ShowLauncher = false;
+        public string CustomExecutablePath;
 
-        public string GameName { get { return Localise("Game" + BaseGame?.GameName, BaseGame?.GameName) + (ShowLauncher ? $" ({Localise("Launcher" + Launcher)})" : ""); } }
-        public Uri GameImage { get { return HedgeApp.GetResourceUri($"Resources/Graphics/Games/{BaseGame?.GameName}.png"); } }
+        public string GameName
+        {
+            get
+            {
+                var gameName = BaseGame?.IsCustom == true
+                    ? BaseGame.GameName
+                    : Localise("Game" + BaseGame?.GameName, BaseGame?.GameName);
+                return gameName + (ShowLauncher ? $" ({Localise("Launcher" + Launcher)})" : "");
+            }
+        }
 
-        public GameInstall(Game game, string directory, GameLauncher launcher)
+        public Uri GameImage
+        {
+            get
+            {
+                if (BaseGame?.IsCustom == true)
+                    return null;
+
+                return HedgeApp.GetResourceUri($"Resources/Graphics/Games/{BaseGame?.GameName}.png");
+            }
+        }
+
+        public GameInstall(Game game, string directory, GameLauncher launcher, string customExecutablePath = null)
         {
             BaseGame = game;
             GameDirectory = directory;
             Launcher = launcher;
+            CustomExecutablePath = customExecutablePath;
         }
 
         public void StartGame(bool useLauncher = true, string startDirectory = null)
@@ -259,20 +282,37 @@ namespace HedgeModManager
                         HedgeApp.StartURL($"heroic://launch/{BaseGame.EGSID}", true);
                         break;
                     default:
-                        Process.Start(new ProcessStartInfo(Path.Combine(startDirectory, BaseGame.ExecutableName))
+                        Process.Start(new ProcessStartInfo(GetExecutablePath(startDirectory))
                         {
-                            WorkingDirectory = startDirectory
+                            WorkingDirectory = GetWorkingDirectory(startDirectory)
                         });
                         break;
                 }
             }
             else
             {
-                Process.Start(new ProcessStartInfo(Path.Combine(startDirectory, BaseGame.ExecutableName))
+                Process.Start(new ProcessStartInfo(GetExecutablePath(startDirectory))
                 {
-                    WorkingDirectory = startDirectory
+                    WorkingDirectory = GetWorkingDirectory(startDirectory)
                 });
             }
+        }
+
+        public string GetExecutablePath(string startDirectory = null)
+        {
+            if (BaseGame?.IsCustom == true && !string.IsNullOrEmpty(CustomExecutablePath))
+                return Path.GetFullPath(CustomExecutablePath);
+
+            if (string.IsNullOrEmpty(startDirectory))
+                startDirectory = GameDirectory;
+
+            return Path.Combine(startDirectory ?? string.Empty, BaseGame?.ExecutableName ?? string.Empty);
+        }
+
+        private string GetWorkingDirectory(string startDirectory = null)
+        {
+            var executablePath = GetExecutablePath(startDirectory);
+            return Path.GetDirectoryName(executablePath) ?? startDirectory;
         }
 
         public static List<GameInstall> SearchForGames(string preference = null)
@@ -287,6 +327,8 @@ namespace HedgeModManager
 
             if (epicGames != null)
                 games.AddRange(epicGames);
+
+            games.AddRange(LoadCustomGames());
 
             // Extra directories
             if (!string.IsNullOrEmpty(RegistryConfig.ExtraGameDirectories))
@@ -307,6 +349,11 @@ namespace HedgeModManager
                 }
             }
 
+            games = games
+                .GroupBy(GetInstallIdentity, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
+
             // Check for dupes
             foreach (var game in games.GroupBy(t => t.BaseGame).Where(t => t.Count() > 1).Select(t => t.Key))
             {
@@ -321,7 +368,166 @@ namespace HedgeModManager
                 : games;
         }
 
+        private static string GetInstallIdentity(GameInstall install)
+        {
+            var executablePath = install.GetExecutablePath(install.GameDirectory) ?? string.Empty;
+            executablePath = executablePath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+            return $"{install.BaseGame?.GameName}|{executablePath}";
+        }
+
+        private static IEnumerable<GameInstall> LoadCustomGames()
+        {
+            var installs = new List<GameInstall>();
+            if (string.IsNullOrWhiteSpace(RegistryConfig.CustomGameInstalls))
+                return installs;
+
+            List<CustomGameEntry> entries;
+            try
+            {
+                entries = JsonConvert.DeserializeObject<List<CustomGameEntry>>(RegistryConfig.CustomGameInstalls);
+            }
+            catch
+            {
+                return installs;
+            }
+
+            if (entries == null)
+                return installs;
+
+            foreach (var entry in entries)
+            {
+                if (TryCreateFromPath(entry.DisplayName, entry.Path, out var install, out _))
+                    installs.Add(install);
+            }
+
+            return installs;
+        }
+
+        public static bool TryAddCustomGameInstall(string displayName, string path, out GameInstall install, out string errorMessage)
+        {
+            install = null;
+            errorMessage = null;
+
+            if (!TryCreateFromPath(displayName, path, out install, out errorMessage))
+                return false;
+
+            var entries = new List<CustomGameEntry>();
+            if (!string.IsNullOrWhiteSpace(RegistryConfig.CustomGameInstalls))
+            {
+                try
+                {
+                    entries = JsonConvert.DeserializeObject<List<CustomGameEntry>>(RegistryConfig.CustomGameInstalls)
+                        ?? new List<CustomGameEntry>();
+                }
+                catch
+                {
+                    entries = new List<CustomGameEntry>();
+                }
+            }
+
+            string normalizedInputPath = NormalizePath(path);
+            if (entries.Any(e => string.Equals(NormalizePath(e.Path), normalizedInputPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                errorMessage = Localise("CustomGameUIDuplicatePath", "A game with this path already exists.");
+                return false;
+            }
+
+            entries.Add(new CustomGameEntry
+            {
+                DisplayName = displayName?.Trim(),
+                Path = normalizedInputPath
+            });
+
+            RegistryConfig.CustomGameInstalls = JsonConvert.SerializeObject(entries);
+            RegistryConfig.Save();
+            return true;
+        }
+
+        public static bool TryCreateFromPath(string displayName, string path, out GameInstall install, out string errorMessage)
+        {
+            install = null;
+            errorMessage = null;
+            string normalizedPath = NormalizePath(path);
+
+            if (string.IsNullOrWhiteSpace(normalizedPath))
+            {
+                errorMessage = Localise("CustomGameUIInvalidPath", "The selected game path is invalid.");
+                return false;
+            }
+
+            if (File.Exists(normalizedPath))
+            {
+                string executable = Path.GetFileName(normalizedPath);
+                string directory = Path.GetDirectoryName(normalizedPath);
+                var detectedGame = Games.GetSupportedGames()
+                    .FirstOrDefault(g => string.Equals(g.ExecutableName, executable, StringComparison.OrdinalIgnoreCase));
+
+                if (detectedGame != null)
+                {
+                    install = new GameInstall(detectedGame, directory, GameLauncher.None);
+                }
+                else
+                {
+                    install = new GameInstall(new Game
+                    {
+                        IsCustom = true,
+                        GameName = string.IsNullOrWhiteSpace(displayName)
+                            ? Path.GetFileNameWithoutExtension(executable)
+                            : displayName.Trim(),
+                        ExecutableName = executable
+                    }, directory, GameLauncher.None, normalizedPath);
+                }
+
+                return true;
+            }
+
+            if (Directory.Exists(normalizedPath))
+            {
+                var detectedInstalls = Games.GetSupportedGames()
+                    .Select(game => new { game, fullPath = Path.Combine(normalizedPath, game.ExecutableName) })
+                    .Where(x => File.Exists(x.fullPath))
+                    .ToList();
+
+                if (detectedInstalls.Count == 1)
+                {
+                    install = new GameInstall(detectedInstalls[0].game, normalizedPath, GameLauncher.None);
+                    return true;
+                }
+
+                errorMessage = Localise("CustomGameUINeedsExecutable", "Select an executable file for custom games that cannot be matched safely.");
+                return false;
+            }
+
+            errorMessage = Localise("CustomGameUIPathNotFound", "The selected game path does not exist.");
+            return false;
+        }
+
+        private static string NormalizePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return string.Empty;
+
+            var normalized = path.Trim().Trim('"').Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+            try
+            {
+                normalized = Path.GetFullPath(normalized);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+
+            return normalized.TrimEnd(Path.DirectorySeparatorChar);
+        }
+
         public override string ToString() => Localise("Game" + BaseGame.GameName, BaseGame.GameName);
+    }
+
+    public class CustomGameEntry
+    {
+        public string DisplayName { get; set; }
+        public string Path { get; set; }
     }
 
     public enum GameLauncher

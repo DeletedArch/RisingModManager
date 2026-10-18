@@ -1,0 +1,47 @@
+﻿<Window x:Class="HedgeModManager.UI.AddCustomGameWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Height="230" Width="620" WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        Style="{StaticResource HedgeWindow}" FocusManager.FocusedElement="{Binding ElementName=DisplayNameTextBox}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="HeaderText" Text="Add Custom Game" TextAlignment="Center" FontSize="30"
+                   Foreground="{DynamicResource HMM.Window.HeaderAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="20,0" TextWrapping="Wrap"/>
+
+        <Grid Grid.Row="1" Margin="16,16,16,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="DisplayNameLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Display Name"/>
+            <TextBox x:Name="DisplayNameTextBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="8,0,0,8" Text="{Binding DisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock x:Name="PathLabel" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="Game Path"/>
+            <TextBox x:Name="PathTextBox" Grid.Row="1" Grid.Column="1" Margin="8,0,8,8" Text="{Binding GamePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button x:Name="BrowseButton" Grid.Row="1" Grid.Column="2" Width="75" Height="23" Margin="0,0,0,8" Click="UI_Browse_Click" Content="Browse..."/>
+
+            <TextBlock x:Name="HintText" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" TextWrapping="Wrap" Foreground="{DynamicResource HMM.Text.ForegroundBrush}" Opacity="0.75"
+                       Text="Select either a game executable (.exe) or an installation folder for a supported game."/>
+        </Grid>
+
+        <StackPanel Orientation="Horizontal" FlowDirection="RightToLeft" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="-4" Grid.Row="2" Background="{StaticResource HMM.Window.DialogBottom}">
+            <Button Content="{StaticResource CommonUICancel}" Margin="12,0,0,0" VerticalAlignment="Center" Width="75" Height="23" IsCancel="True" />
+            <Button x:Name="OkButton" Content="{StaticResource CommonUIOK}" Margin="8,0,0,0" VerticalAlignment="Center" Width="75" Height="23" Click="UI_OK_Click" IsDefault="True" />
+        </StackPanel>
+    </Grid>
+</Window>
